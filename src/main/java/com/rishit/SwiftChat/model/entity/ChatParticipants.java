@@ -1,10 +1,8 @@
 package com.rishit.SwiftChat.model.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -13,21 +11,23 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Table(name = "chat_participants")
 public class ChatParticipants {
 
     @Id
-    @GeneratedValue
     private UUID id;
 
     @ManyToOne
+    @NonNull
     @JoinColumn(name = "chat_id")
     private Chat chat;
 
     @ManyToOne
+    @NonNull
     @JoinColumn(name = "user_id")
     private User user;
 
+    @CreationTimestamp
     private LocalDateTime joinedAt;
 }

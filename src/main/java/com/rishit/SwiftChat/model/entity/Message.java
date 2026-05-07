@@ -1,8 +1,7 @@
 package com.rishit.SwiftChat.model.entity;
 
-
+import com.rishit.SwiftChat.model.enums.MessageStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,7 +12,6 @@ import java.util.UUID;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Table(name = "messages")
@@ -33,6 +31,9 @@ public class Message {
 
     private String content;
     private boolean deleted;
+
+    @Enumerated(EnumType.STRING)
+    private MessageStatus status = MessageStatus.SENT;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

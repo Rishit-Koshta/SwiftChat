@@ -1,13 +1,16 @@
 package com.rishit.SwiftChat.services;
 
+import com.rishit.SwiftChat.dto.request.GroupChatRequest;
+import com.rishit.SwiftChat.dto.request.PrivateChatRequest;
+import com.rishit.SwiftChat.dto.response.ChatResponse;
 import com.rishit.SwiftChat.model.entity.Chat;
 import com.rishit.SwiftChat.model.entity.ChatParticipants;
 import com.rishit.SwiftChat.model.entity.User;
 import com.rishit.SwiftChat.repository.ChatParticipantsRepository;
 import com.rishit.SwiftChat.repository.ChatRepository;
 import com.rishit.SwiftChat.repository.UserRepository;
+import com.rishit.SwiftChat.services.impl.ChatService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,51 +20,51 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ChatServices {
+public class ChatServicesImpl implements ChatService {
 
     private final ChatRepository chatRepository;
     private final ChatParticipantsRepository chatParticipantsRepository;
     private final UserRepository userRepository;
 
-    public Chat createPrivateChat(UUID user1Id, UUID user2Id){
+    public ChatResponse createPrivateChat(PrivateChatRequest request){
 
         Chat chat = new Chat();
         chat.setIsGroup(false);
 
         chatRepository.save(chat);
 
-        List<UUID> uuidList = List.of(user1Id,user2Id);
+        List<UUID> uuidList = List.of(request.getUser1Id(),request.getUser2Id());
         List<User> users = userRepository.findAllById(uuidList);
 
         if(users.size()!=2){
             throw new RuntimeException("user not found");
         }
 
-        chatParticipantsRepository.save(new ChatParticipants(UUID.randomUUID(),chat, users.get(0),LocalDateTime.now()));
-        chatParticipantsRepository.save(new ChatParticipants(UUID.randomUUID(),chat, users.get(1),LocalDateTime.now()));
+        chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
+        chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
 
-        return chat;
+        return mapToChatResponse(chat);
     }
 
-    public Chat createGroupChat(String groupName, List<UUID>uuidList ){
+    public ChatResponse createGroupChat(GroupChatRequest request){
 
         Chat chat = new Chat();
         chat.setIsGroup(true);
-        chat.setGroupName(groupName);
+        chat.setGroupName(request.getGroupName());
 
         chatRepository.save(chat);
 
-        List<User> users = userRepository.findAllById(uuidList);
+        List<User> users = userRepository.findAllById(request.getUuidList());
 
         for(User user : users){
-            chatParticipantsRepository.save(new ChatParticipants(UUID.randomUUID(), chat, user, LocalDateTime.now()));
+            chatParticipantsRepository.save(new ChatParticipants(chat,user));
         }
 
-        return chat;
+        return mapToChatResponse(chat);
 
     }
 
-    public List<Chat> getUserChats(UUID userId){
+    public List<ChatResponse> getUserChats(UUID userId){
 
         List<ChatParticipants> participants =
                 chatParticipantsRepository.findByUserId(userId);
@@ -70,7 +73,11 @@ public class ChatServices {
                 .map(cp -> cp.getChat().getId())
                 .toList();
 
-        return chatRepository.findAllById(chatIds);
+        List<Chat> chatList =  chatRepository.findAllById(chatIds);
+
+        return chatList.stream()
+                .map(this::mapToChatResponse)
+                .toList();
     }
 
     public void addUserToChat(UUID chatId, UUID userId){
@@ -91,6 +98,17 @@ public class ChatServices {
 
         chatParticipantsRepository.save(chatParticipants);
 
+    }
+
+
+    private ChatResponse mapToChatResponse(Chat chat){
+        ChatResponse response = new ChatResponse();
+        response.setId(chat.getId());
+        response.setGroupName(chat.getGroupName());
+        response.setIsGroup(chat.getIsGroup());
+        response.setCreatedAt(chat.getCreatedAt());
+
+        return response;
     }
 
 

@@ -1,13 +1,12 @@
 package com.rishit.SwiftChat.controller;
 
-import com.rishit.SwiftChat.model.entity.User;
-import com.rishit.SwiftChat.services.UserServices;
+import com.rishit.SwiftChat.dto.request.CreateUserRequest;
+import com.rishit.SwiftChat.dto.response.UserResponse;
+import com.rishit.SwiftChat.services.UserServicesImpl;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.UUID;
 
 @RestController
@@ -15,15 +14,15 @@ import java.util.UUID;
 @RequestMapping("/user")
 public class UserController {
 
-    private final UserServices userServices;
+    private final UserServicesImpl userServices;
 
     @PostMapping("/save")
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userServices.saveUser(user));
+    public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userServices.saveUser(request));
     }
 
     @GetMapping("/get/{userId}")
-    public ResponseEntity<User> getUser(@PathVariable UUID userId){
+    public ResponseEntity<UserResponse> getUser(@PathVariable UUID userId){
         return ResponseEntity.status(HttpStatus.OK).body(userServices.getUser(userId));
     }
 
@@ -34,7 +33,7 @@ public class UserController {
     }
 
     @PutMapping("/update/{userId}")
-    public ResponseEntity<User> updateUser(@PathVariable UUID userId, @RequestBody User user){
-        return ResponseEntity.status(HttpStatus.CREATED).body(userServices.updateUser(userId,user));
+    public ResponseEntity<UserResponse> updateUser(@PathVariable UUID userId, @RequestBody CreateUserRequest request){
+        return ResponseEntity.status(HttpStatus.CREATED).body(userServices.updateUser(userId,request));
     }
 }
