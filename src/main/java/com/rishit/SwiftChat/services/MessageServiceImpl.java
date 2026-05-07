@@ -3,6 +3,7 @@ package com.rishit.SwiftChat.services;
 
 import com.rishit.SwiftChat.dto.request.SendMessageRequest;
 import com.rishit.SwiftChat.dto.response.MessageResponse;
+import com.rishit.SwiftChat.dto.response.PaginatedMessageResponse;
 import com.rishit.SwiftChat.model.entity.Chat;
 import com.rishit.SwiftChat.model.entity.Message;
 import com.rishit.SwiftChat.model.entity.User;
@@ -14,6 +15,9 @@ import com.rishit.SwiftChat.repository.UserRepository;
 import com.rishit.SwiftChat.services.impl.MessageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 
 
@@ -74,7 +78,28 @@ public class MessageServiceImpl implements MessageService {
         messageRepository.markMessagesAsRead(chatId, userId, MessageStatus.READ);
     }
 
+    @Override
+    public PaginatedMessageResponse getMessages(UUID chatId, int page, int size) {
 
+        // 1. Create the pagination request
+        Pageable pageable = PageRequest.of(page, size);
+
+        // 2. Fetch the slice of entities from the database
+        Slice<Message> messageSlice = messageRepository.findByChatIdOrderByCreatedAtDesc(chatId, pageable);
+
+        // 3. Map the Entities to DTOs
+        List<MessageResponse> messageDtos = messageSlice.getContent()
+                .stream()
+                .map(this::mapToMessageResponse)
+                .toList();
+
+        // 4. Return the paginated wrapper
+        return new PaginatedMessageResponse(
+                messageDtos,
+                messageSlice.getNumber(),      // Current page number
+                messageSlice.hasNext()         // Is there another page?
+        );
+    }
 
     private MessageResponse mapToMessageResponse(Message message){
         MessageResponse response = new MessageResponse();
