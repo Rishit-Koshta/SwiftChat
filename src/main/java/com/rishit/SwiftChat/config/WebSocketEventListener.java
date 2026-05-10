@@ -30,10 +30,10 @@ public class WebSocketEventListener {
             UUID userId = UUID.fromString(userIdStr);
             accessor.getSessionAttributes().put("userId", userId); // Store in session
 
-            // 1. Update DB to Online
+            // Update DB to Online
             userServices.updateUserPresence(userId, true);
 
-            // 2. Broadcast to everyone that this user is online
+            // Broadcast to everyone that this user is online
             messagingTemplate.convertAndSend("/topic/public", new PresenceEvent(userId, true));
         }
 
@@ -47,10 +47,10 @@ public class WebSocketEventListener {
         UUID userId = (UUID) accessor.getSessionAttributes().get("userId");
 
         if (userId != null) {
-            // 1. Update DB to Offline and set lastSeen
+            // Update DB to Offline and set lastSeen
             userServices.updateUserPresence(userId, false);
 
-            // 2. Broadcast to everyone that this user went offline
+            // Broadcast to everyone that this user went offline
             messagingTemplate.convertAndSend("/topic/public", new PresenceEvent(userId, false));
         }
     }

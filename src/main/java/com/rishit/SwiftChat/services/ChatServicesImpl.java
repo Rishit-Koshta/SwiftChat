@@ -11,7 +11,9 @@ import com.rishit.SwiftChat.repository.ChatRepository;
 import com.rishit.SwiftChat.repository.UserRepository;
 import com.rishit.SwiftChat.services.impl.ChatService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.TimeUnit;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,25 +27,42 @@ public class ChatServicesImpl implements ChatService {
     private final ChatRepository chatRepository;
     private final ChatParticipantsRepository chatParticipantsRepository;
     private final UserRepository userRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     public ChatResponse createPrivateChat(PrivateChatRequest request){
 
-        Chat chat = new Chat();
-        chat.setIsGroup(false);
+        String lockKey = "lock:chat:" + request.getUser1Id() + ":" + request.getUser2Id();
 
-        chatRepository.save(chat);
+        // Attempt to get a lock for 5 seconds
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
 
-        List<UUID> uuidList = List.of(request.getUser1Id(),request.getUser2Id());
-        List<User> users = userRepository.findAllById(uuidList);
-
-        if(users.size()!=2){
-            throw new RuntimeException("user not found");
+        if (Boolean.FALSE.equals(acquired)) {
+            throw new RuntimeException("Chat creation already in progress...");
         }
 
-        chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
-        chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
+        try {
 
-        return mapToChatResponse(chat);
+            Chat chat = new Chat();
+            chat.setIsGroup(false);
+
+            chatRepository.save(chat);
+
+            List<UUID> uuidList = List.of(request.getUser1Id(),request.getUser2Id());
+            List<User> users = userRepository.findAllById(uuidList);
+
+            if(users.size()!=2){
+                throw new RuntimeException("user not found");
+            }
+
+            chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
+            chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
+
+            return mapToChatResponse(chat);
+
+        } finally {
+            redisTemplate.delete(lockKey); // Always release the lock!
+        }
+
     }
 
     public ChatResponse createGroupChat(GroupChatRequest request){

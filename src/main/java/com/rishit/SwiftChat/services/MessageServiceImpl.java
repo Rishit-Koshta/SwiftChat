@@ -1,9 +1,10 @@
 package com.rishit.SwiftChat.services;
 
-
+import com.rishit.SwiftChat.dto.event.NewMessageEvent;
 import com.rishit.SwiftChat.dto.request.SendMessageRequest;
 import com.rishit.SwiftChat.dto.response.MessageResponse;
 import com.rishit.SwiftChat.dto.response.PaginatedMessageResponse;
+import com.rishit.SwiftChat.messaging.producer.RabbitMQProducer;
 import com.rishit.SwiftChat.model.entity.Chat;
 import com.rishit.SwiftChat.model.entity.Message;
 import com.rishit.SwiftChat.model.entity.User;
@@ -20,7 +21,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 
-
 import java.util.List;
 import java.util.UUID;
 
@@ -32,10 +32,12 @@ public class MessageServiceImpl implements MessageService {
     private final ChatParticipantsRepository participantRepository;
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
+    private final RabbitMQProducer rabbitMQProducer;
 
+    @Override
     public MessageResponse sendMessage(SendMessageRequest request) {
 
-        Chat chat = chatRepository.findById(request.getChatId()).orElseThrow(()-> new RuntimeException("chat now found"));
+        Chat chat = chatRepository.findById(request.getChatId()).orElseThrow(()-> new RuntimeException("Chat not found"));
         User sender = userRepository.findById(request.getSenderID()).orElseThrow(()->new RuntimeException("user not found"));
 
         boolean isParticipant = participantRepository
@@ -51,16 +53,22 @@ public class MessageServiceImpl implements MessageService {
         message.setContent(request.getContent());
 
         Message savedMessage =  messageRepository.save(message);
-        return mapToMessageResponse(savedMessage);
+        MessageResponse response =  mapToMessageResponse(savedMessage);
+
+        NewMessageEvent event = new NewMessageEvent(
+                response.getMessageId(),
+                response.getChatId(),
+                response.getUserId(),
+                response.getSenderName(),
+                response.getContent(),
+                response.getCreatedAt()
+        );
+
+        rabbitMQProducer.sendToSearchQueue(event);
+
+        return response;
     }
 
-
-    public List<MessageResponse> getMessages(UUID chatId) {
-        List<Message> messages =  messageRepository.findByChatIdOrderByCreatedAtAsc(chatId);
-        return messages.stream()
-                .map(this::mapToMessageResponse)
-                .toList();
-    }
 
     public MessageResponse updateStatus(UUID messageId, MessageStatus newStatus){
 

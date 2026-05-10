@@ -5,8 +5,13 @@ import com.rishit.SwiftChat.dto.response.UserResponse;
 import com.rishit.SwiftChat.model.entity.User;
 import com.rishit.SwiftChat.repository.UserRepository;
 import com.rishit.SwiftChat.services.impl.UserService;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.TimeUnit;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,7 +21,12 @@ import java.util.UUID;
 public class UserServicesImpl implements UserService{
 
     private final UserRepository userRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private static final String PRESENCE_KEY = "user:presence:";
 
+
+    @Override
+    @CachePut(value = "users", key = "#result.id")
     public UserResponse saveUser(CreateUserRequest request){
         if(userRepository.existsByEmail(request.getEmail())){
             throw new RuntimeException("User already exists");
@@ -31,6 +41,8 @@ public class UserServicesImpl implements UserService{
         return mapToUserResponse(savedUser);
     }
 
+    @Override
+    @CacheEvict(value = "users", key = "#userId")
     public UserResponse updateUser(UUID userId, CreateUserRequest request){
         User user1 = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("user not found"));
         user1.setUserName(request.getUserName());
@@ -38,29 +50,42 @@ public class UserServicesImpl implements UserService{
         return mapToUserResponse(user1);
     }
 
+    @Override
+    @CacheEvict(value = "users", key = "#userId")
     public void deleteUser(UUID userId){
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         userRepository.delete(user);
     }
 
+    @Override
+    @Cacheable(value = "users", key = "#userId")
     public UserResponse getUser(UUID userId){
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         return mapToUserResponse(user);
     }
 
     public void updateUserPresence(UUID userId, boolean isOnline){
+        String key = PRESENCE_KEY + userId.toString();
 
-        User user = userRepository.findById(userId).orElseThrow(()->new RuntimeException("user not found"));
+        if (isOnline) {
+            redisTemplate.opsForValue().set(key, true, 10, TimeUnit.MINUTES);
+        } else {
+            redisTemplate.delete(key);
 
-        user.setOnline(isOnline);
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("user not found"));
 
-        if(!isOnline){
             user.setLastSeen(LocalDateTime.now());
+
+            userRepository.save(user);
         }
 
-        userRepository.save(user);
     }
 
+    public boolean isUserOnline(UUID userId) {
+        Object val = redisTemplate.opsForValue().get(PRESENCE_KEY + userId.toString());
+        return val != null && (boolean) val;
+    }
 
 
     private UserResponse mapToUserResponse(User user){

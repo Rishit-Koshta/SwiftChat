@@ -12,7 +12,6 @@ import java.util.UUID;
 public interface MessageService {
 
     MessageResponse sendMessage(SendMessageRequest request);
-    List<MessageResponse> getMessages(UUID chatId);
     void markChatMessagesAsRead(UUID chatId, UUID userId);
     MessageResponse updateStatus(UUID messageId, MessageStatus newStatus);
     PaginatedMessageResponse getMessages(UUID chatId, int page, int size);

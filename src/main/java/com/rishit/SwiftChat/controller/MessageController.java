@@ -1,10 +1,12 @@
 package com.rishit.SwiftChat.controller;
 
 
+import com.rishit.SwiftChat.document.MessageDocument;
 import com.rishit.SwiftChat.dto.request.SendMessageRequest;
 import com.rishit.SwiftChat.dto.response.MessageResponse;
 import com.rishit.SwiftChat.dto.response.PaginatedMessageResponse;
 import com.rishit.SwiftChat.model.entity.Message;
+import com.rishit.SwiftChat.repository.MessageSearchRepository;
 import com.rishit.SwiftChat.services.MessageServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,12 +22,7 @@ import java.util.UUID;
 public class MessageController {
 
     private final MessageServiceImpl messageService;
-
-    @GetMapping("/getAllMessage/{chatId}")
-    public ResponseEntity<List<MessageResponse>> getMessages(@PathVariable UUID chatId){
-        return ResponseEntity.status(HttpStatus.OK).body(messageService.getMessages(chatId));
-    }
-
+    private final MessageSearchRepository searchRepository;
     @PostMapping("/sendMessage/{chatId}/{userId}")
     public ResponseEntity<MessageResponse> sendMessage(@RequestBody SendMessageRequest request){
         return ResponseEntity.status(HttpStatus.CREATED).body(messageService.sendMessage(request));
@@ -46,5 +43,17 @@ public class MessageController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(messageService.getMessages(chatId, page, size));
+    }
+
+    @GetMapping("/search/{chatId}")
+    public ResponseEntity<List<MessageDocument>> searchMessages(
+            @PathVariable UUID chatId,
+            @RequestParam String keyword) {
+
+        // This hits Elasticsearch, NOT MySQL!
+        // It returns results instantly even if there are 10 million messages.
+        List<MessageDocument> searchResults = searchRepository.findByChatIdAndContentMatches(chatId, keyword);
+
+        return ResponseEntity.ok(searchResults);
     }
 }
