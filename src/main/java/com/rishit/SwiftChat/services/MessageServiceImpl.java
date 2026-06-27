@@ -37,6 +37,10 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public MessageResponse sendMessage(SendMessageRequest request) {
 
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new RuntimeException("Message cannot be empty");
+        }
+
         Chat chat = chatRepository.findById(request.getChatId()).orElseThrow(()-> new RuntimeException("Chat not found"));
         User sender = userRepository.findById(request.getSenderID()).orElseThrow(()->new RuntimeException("user not found"));
 
@@ -88,6 +92,9 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public PaginatedMessageResponse getMessages(UUID chatId, int page, int size) {
+
+        chatRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Chat not found"));
 
         // 1. Create the pagination request
         Pageable pageable = PageRequest.of(page, size);

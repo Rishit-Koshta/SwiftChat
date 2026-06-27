@@ -1,8 +1,7 @@
 package com.rishit.SwiftChat.dto.request;
 
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter

@@ -19,6 +19,8 @@ public class RabbitMQConsumer {
 
         System.out.println("Received message from RabbitMQ! Indexing to Elasticsearch...");
 
+        System.out.println(event.getCreatedAt());
+
         // 1. Map the Event DTO to the Elasticsearch Document
         MessageDocument document = new MessageDocument();
         document.setId(event.getMessageId());
@@ -30,6 +32,9 @@ public class RabbitMQConsumer {
 
         // 2. Save it to Elasticsearch
         searchRepository.save(document);
+
+        MessageDocument saved = searchRepository.findById(document.getId()).orElse(null);
+        System.out.println(saved);
 
         System.out.println("Successfully indexed message ID: " + event.getMessageId());
     }

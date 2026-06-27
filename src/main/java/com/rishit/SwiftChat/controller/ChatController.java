@@ -34,15 +34,18 @@ public class ChatController {
 
         } catch (RuntimeException e) {
 
+            e.printStackTrace();
+
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .build();
+//                    .build();
+                    .body(null);
         }
     }
 
     @PostMapping("/group")
     public ResponseEntity<ChatResponse> createGroupChat(
-            GroupChatRequest request) {
+            @RequestBody GroupChatRequest request) {
 
         try {
 

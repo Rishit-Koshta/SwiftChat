@@ -23,14 +23,14 @@ public class MessageController {
 
     private final MessageServiceImpl messageService;
     private final MessageSearchRepository searchRepository;
-    @PostMapping("/sendMessage/{chatId}/{userId}")
+    @PostMapping("/sendMessage")
     public ResponseEntity<MessageResponse> sendMessage(@RequestBody SendMessageRequest request){
         return ResponseEntity.status(HttpStatus.CREATED).body(messageService.sendMessage(request));
     }
 
     @PutMapping("/readAll/{chatId}/user/{userId}")
-    public ResponseEntity<String> markAllMessageAsRead(@PathVariable UUID chatId, @PathVariable UUID userID){
-        messageService.markChatMessagesAsRead(chatId,userID);
+    public ResponseEntity<String> markAllMessageAsRead(@PathVariable UUID chatId, @PathVariable UUID userId){
+        messageService.markChatMessagesAsRead(chatId,userId);
         return ResponseEntity.ok("All messages are read");
     }
 
@@ -49,6 +49,10 @@ public class MessageController {
     public ResponseEntity<List<MessageDocument>> searchMessages(
             @PathVariable UUID chatId,
             @RequestParam String keyword) {
+
+        if (keyword == null || keyword.isBlank()) {
+            throw new RuntimeException("Keyword cannot be empty");
+        }
 
         // This hits Elasticsearch, NOT MySQL!
         // It returns results instantly even if there are 10 million messages.

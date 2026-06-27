@@ -47,8 +47,10 @@ public class UserServicesImpl implements UserService{
         User user1 = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("user not found"));
         user1.setUserName(request.getUserName());
         user1.setEmail(request.getEmail());
-        return mapToUserResponse(user1);
+        User updatedUser = userRepository.save(user1);
+        return mapToUserResponse(updatedUser);
     }
+
 
     @Override
     @CacheEvict(value = "users", key = "#userId")

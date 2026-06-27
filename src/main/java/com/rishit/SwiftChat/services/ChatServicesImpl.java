@@ -13,6 +13,9 @@ import com.rishit.SwiftChat.services.impl.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import java.time.LocalDateTime;
@@ -31,7 +34,16 @@ public class ChatServicesImpl implements ChatService {
 
     public ChatResponse createPrivateChat(PrivateChatRequest request){
 
-        String lockKey = "lock:chat:" + request.getUser1Id() + ":" + request.getUser2Id();
+        UUID first = request.getUser1Id().compareTo(request.getUser2Id()) < 0
+                ? request.getUser1Id()
+                : request.getUser2Id();
+
+        UUID second = request.getUser1Id().compareTo(request.getUser2Id()) < 0
+                ? request.getUser2Id()
+                : request.getUser1Id();
+
+        String lockKey = "lock:chat:" + first + ":" + second;
+//        String lockKey = "lock:chat:" + request.getUser1Id() + ":" + request.getUser2Id();
 
         // Attempt to get a lock for 5 seconds
         Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", 5, TimeUnit.SECONDS);
@@ -55,7 +67,7 @@ public class ChatServicesImpl implements ChatService {
             }
 
             chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
-            chatParticipantsRepository.save(new ChatParticipants(chat,users.get(0)));
+            chatParticipantsRepository.save(new ChatParticipants(chat,users.get(1)));
 
             return mapToChatResponse(chat);
 
@@ -67,13 +79,29 @@ public class ChatServicesImpl implements ChatService {
 
     public ChatResponse createGroupChat(GroupChatRequest request){
 
+        List<User> users = userRepository.findAllById(request.getUuidList());
+
+        if (users.size() != request.getUuidList().size()) {
+            throw new RuntimeException("One or more users not found");
+        }
+
+        if (request.getUuidList().size() < 2) {
+            throw new RuntimeException("Group must have at least 2 members");
+        }
+
+        Set<UUID> uniqueUsers = new HashSet<>(request.getUuidList());
+
+        if (uniqueUsers.size() != request.getUuidList().size()) {
+            throw new RuntimeException("Duplicate users found");
+        }
+
         Chat chat = new Chat();
         chat.setIsGroup(true);
         chat.setGroupName(request.getGroupName());
 
         chatRepository.save(chat);
 
-        List<User> users = userRepository.findAllById(request.getUuidList());
+//        List<User> users = userRepository.findAllById(request.getUuidList());
 
         for(User user : users){
             chatParticipantsRepository.save(new ChatParticipants(chat,user));
@@ -110,10 +138,10 @@ public class ChatServicesImpl implements ChatService {
         }
 
         ChatParticipants chatParticipants = new ChatParticipants();
-        chatParticipants.setId(UUID.randomUUID());
+//        chatParticipants.setId(UUID.randomUUID());
         chatParticipants.setChat(chat);
         chatParticipants.setUser(user);
-        chatParticipants.setJoinedAt(LocalDateTime.now());
+//        chatParticipants.setJoinedAt(LocalDateTime.now());
 
         chatParticipantsRepository.save(chatParticipants);
 
