@@ -1,5 +1,6 @@
 package com.rishit.SwiftChat.services;
 
+import com.rishit.SwiftChat.document.MessageDocument;
 import com.rishit.SwiftChat.dto.event.NewMessageEvent;
 import com.rishit.SwiftChat.dto.request.SendMessageRequest;
 import com.rishit.SwiftChat.dto.response.MessageResponse;
@@ -9,10 +10,7 @@ import com.rishit.SwiftChat.model.entity.Chat;
 import com.rishit.SwiftChat.model.entity.Message;
 import com.rishit.SwiftChat.model.entity.User;
 import com.rishit.SwiftChat.model.enums.MessageStatus;
-import com.rishit.SwiftChat.repository.ChatParticipantsRepository;
-import com.rishit.SwiftChat.repository.ChatRepository;
-import com.rishit.SwiftChat.repository.MessageRepository;
-import com.rishit.SwiftChat.repository.UserRepository;
+import com.rishit.SwiftChat.repository.*;
 import com.rishit.SwiftChat.services.impl.MessageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +31,7 @@ public class MessageServiceImpl implements MessageService {
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
     private final RabbitMQProducer rabbitMQProducer;
+    private final MessageSearchRepository searchRepository;
 
     @Override
     public MessageResponse sendMessage(SendMessageRequest request) {
@@ -41,8 +40,8 @@ public class MessageServiceImpl implements MessageService {
             throw new RuntimeException("Message cannot be empty");
         }
 
-        Chat chat = chatRepository.findById(request.getChatId()).orElseThrow(()-> new RuntimeException("Chat not found"));
-        User sender = userRepository.findById(request.getSenderID()).orElseThrow(()->new RuntimeException("user not found"));
+        Chat chat = chatRepository.findById(request.getChatId()).orElseThrow(() -> new RuntimeException("Chat not found"));
+        User sender = userRepository.findById(request.getSenderID()).orElseThrow(() -> new RuntimeException("user not found"));
 
         boolean isParticipant = participantRepository
                 .existsByChatIdAndUserId(request.getChatId(), request.getSenderID());
@@ -56,8 +55,8 @@ public class MessageServiceImpl implements MessageService {
         message.setSender(sender);
         message.setContent(request.getContent());
 
-        Message savedMessage =  messageRepository.save(message);
-        MessageResponse response =  mapToMessageResponse(savedMessage);
+        Message savedMessage = messageRepository.save(message);
+        MessageResponse response = mapToMessageResponse(savedMessage);
 
         NewMessageEvent event = new NewMessageEvent(
                 response.getMessageId(),
@@ -74,7 +73,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
 
-    public MessageResponse updateStatus(UUID messageId, MessageStatus newStatus){
+    public MessageResponse updateStatus(UUID messageId, MessageStatus newStatus) {
 
         Message message = messageRepository.findById(messageId).orElseThrow(() -> new RuntimeException("message not found"));
 
@@ -100,7 +99,8 @@ public class MessageServiceImpl implements MessageService {
         Pageable pageable = PageRequest.of(page, size);
 
         // 2. Fetch the slice of entities from the database
-        Slice<Message> messageSlice = messageRepository.findByChatIdOrderByCreatedAtDesc(chatId, pageable);
+//        Slice<Message> messageSlice = messageRepository.findByChatIdOrderByCreatedAtDesc(chatId, pageable);
+        Slice<Message> messageSlice = messageRepository.findByChatIdAndDeletedFalseOrderByCreatedAtDesc(chatId, pageable);
 
         // 3. Map the Entities to DTOs
         List<MessageResponse> messageDtos = messageSlice.getContent()
@@ -116,7 +116,7 @@ public class MessageServiceImpl implements MessageService {
         );
     }
 
-    private MessageResponse mapToMessageResponse(Message message){
+    private MessageResponse mapToMessageResponse(Message message) {
         MessageResponse response = new MessageResponse();
         response.setMessageId(message.getId());
         response.setChatId(message.getChat().getId());
@@ -128,5 +128,21 @@ public class MessageServiceImpl implements MessageService {
         response.setStatus(message.getStatus());
 
         return response;
+    }
+
+    @Transactional
+    public void deleteMessage(UUID messageId) {
+
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+
+        message.setDeleted(true);
+        messageRepository.save(message);
+
+        MessageDocument document = searchRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found in Elasticsearch"));
+
+        document.setDeleted(true);
+        searchRepository.save(document);
     }
 }

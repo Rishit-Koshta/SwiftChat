@@ -34,7 +34,7 @@ public class ChatWebSocketController {
         }
 
         MessageResponse savedMessage = messageService.sendMessage(request);
-        String destination = "/topic/chat"+ request.getChatId();
+        String destination = "/topic/chat/" + request.getChatId();
 
         RedisMessagePayload payload = new RedisMessagePayload(destination, savedMessage);
 

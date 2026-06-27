@@ -22,4 +22,5 @@ public class RabbitMQProducer {
         );
         System.out.println("Message event published to RabbitMQ! Message ID: " + event.getMessageId());
     }
+
 }

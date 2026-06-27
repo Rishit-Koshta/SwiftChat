@@ -6,6 +6,7 @@ import com.rishit.SwiftChat.dto.request.PrivateChatRequest;
 import com.rishit.SwiftChat.dto.response.ChatResponse;
 import com.rishit.SwiftChat.model.entity.Chat;
 import com.rishit.SwiftChat.services.ChatServicesImpl;
+import com.rishit.SwiftChat.services.MessageServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class ChatController {
 
     private final ChatServicesImpl chatServices;
+    private final MessageServiceImpl messageService;
 
 
     @PostMapping("/private")

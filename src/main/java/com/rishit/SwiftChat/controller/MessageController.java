@@ -56,8 +56,17 @@ public class MessageController {
 
         // This hits Elasticsearch, NOT MySQL!
         // It returns results instantly even if there are 10 million messages.
-        List<MessageDocument> searchResults = searchRepository.findByChatIdAndContentMatches(chatId, keyword);
+        List<MessageDocument> searchResults = searchRepository.searchMessages(chatId, keyword);
 
         return ResponseEntity.ok(searchResults);
+    }
+
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<String> deleteMessage(
+            @PathVariable UUID messageId) {
+
+        messageService.deleteMessage(messageId);
+
+        return ResponseEntity.ok("Message deleted successfully");
     }
 }

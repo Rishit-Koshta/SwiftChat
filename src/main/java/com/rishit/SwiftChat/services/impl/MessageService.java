@@ -15,4 +15,5 @@ public interface MessageService {
     void markChatMessagesAsRead(UUID chatId, UUID userId);
     MessageResponse updateStatus(UUID messageId, MessageStatus newStatus);
     PaginatedMessageResponse getMessages(UUID chatId, int page, int size);
+    void deleteMessage(UUID messageId);
 }

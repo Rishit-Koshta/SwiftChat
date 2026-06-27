@@ -37,4 +37,7 @@ public class MessageDocument {
         format = DateFormat.date_hour_minute_second_fraction
     )
     private LocalDateTime createdAt;
+
+    @Field(type = FieldType.Boolean)
+    private boolean deleted;
 }

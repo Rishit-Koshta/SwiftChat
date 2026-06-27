@@ -2,6 +2,7 @@ package com.rishit.SwiftChat.repository;
 
 import com.rishit.SwiftChat.model.entity.Message;
 import com.rishit.SwiftChat.model.enums.MessageStatus;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,5 +27,19 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
             @Param("targetStatus") MessageStatus targetStatus
     );
 
-    Slice<Message> findByChatIdOrderByCreatedAtDesc(UUID chatId, Pageable pageable);
+    @Modifying
+    @Transactional
+    @Query("""
+       UPDATE Message m
+       SET m.deleted = true
+       WHERE m.id = :messageId
+       """)
+    int softDeleteMessage(UUID messageId);
+
+//    Slice<Message> findByChatIdOrderByCreatedAtDesc(UUID chatId, Pageable pageable);
+
+    Slice<Message> findByChatIdAndDeletedFalseOrderByCreatedAtDesc(
+            UUID chatId,
+            Pageable pageable
+    );
 }
